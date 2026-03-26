@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>SPOTSPORT | Все города · 200+ площадок</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            transition: background 0.3s, color 0.3s;
+            overflow-x: hidden;
+        }
+        
+        /* ТЕМЫ */
+        body.light {
+            background: #f8faf5;
+            color: #1a2c1c;
+        }
+        body.dark {
+            background: #0a0f0a;
+            color: #f0f7ec;
+        }
+        
+        /* АНИМИРОВАННЫЙ ФОН ТОЛЬКО ДЛЯ ТЕМНОЙ ТЕМЫ */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        body.dark .animated-bg {
+            opacity: 1;
+        }
+        .bg-slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            animation: bgFade 20s infinite;
+        }
+        .bg-slide:nth-child(1) { background-image: url('https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=1600'); animation-delay: 0s; }
+        .bg-slide:nth-child(2) { background-image: url('https://images.unsplash.com/photo-1574623452334-1e0ac2b3ccb4?w=1600'); animation-delay: 5s; }
+        .bg-slide:nth-child(3) { background-image: url('https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1600'); animation-delay: 10s; }
+        .bg-slide:nth-child(4) { background-image: url('https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1600'); animation-delay: 15s; }
+        
+        @keyframes bgFade {
+            0%, 100% { opacity: 0; transform: scale(1);}
+            10% { opacity: 0.5; transform: scale(1.02);}
+            25% { opacity: 0.7; }
+            35% { opacity: 0.5; }
+            45% { opacity: 0; }
+        }
+        
+        body.light .overlay {
+            background: rgba(255,255,245,0.85);
+            backdrop-filter: blur(2px);
+        }
+        body.dark .overlay {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 28px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            flex-wrap: wrap;
+            gap: 16px;
+            border-bottom: 1px solid rgba(80,180,80,0.3);
+            backdrop-filter: blur(12px);
+            border-radius: 0 0 32px 32px;
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            font-size: 32px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffd89b, #c7e9b0, #6feb9e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .theme-toggle {
+            background: rgba(0,0,0,0.3);
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px 14px;
+            border-radius: 50px;
+            transition: 0.2s;
+        }
+        
+        .btn-glow {
+            background: linear-gradient(95deg, #2e9e54, #1f7840);
+            border: none;
+            padding: 12px 28px;
+            border-radius: 50px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(80,220,100,0.5);
+            transition: 0.2s;
+        }
+        
+        .hero {
+            text-align: center;
+            padding: 60px 0 40px;
+        }
+        
+        .hero h1 {
+            font-size: 64px;
+            font-weight: 800;
+            background: linear-gradient(145deg, #ffffff, #b3ffc4, #6feb9e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 30px;
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: 800;
+            color: #6feb9e;
+        }
+        
+        .features {
+            display: flex;
+            gap: 28px;
+            margin: 60px 0;
+            flex-wrap: wrap;
+        }
+        
+        .feature-card {
+            background: rgba(30,40,28,0.6);
+            backdrop-filter: blur(12px);
+            border-radius: 32px;
+            padding: 28px;
+            flex: 1;
+            text-align: center;
+            border: 1px solid rgba(100,200,100,0.4);
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: #6feb9e;
+        }
+        
+        .city-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 16px;
+            margin: 30px 0;
+        }
+        
+        .city-btn {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            padding: 12px 28px;
+            border-radius: 60px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid #5fbb5f;
+        }
+        
+        .city-btn.active-city {
+            background: #2e9e54;
+            box-shadow: 0 0 20px #4eff80;
+        }
+        
+        .filter-bar {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid #5fbb5f;
+            padding: 12px 32px;
+            border-radius: 60px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        
+        .filter-btn.active {
+            background: #2e9e54;
+            box-shadow: 0 0 15px #7aff9e;
+        }
+        
+        .map-card {
+            border-radius: 40px;
+            overflow: hidden;
+            margin: 30px 0 50px;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.4);
+        }
+        
+        #map {
+            height: 480px;
+            width: 100%;
+        }
+        
+        .spots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 32px;
+            margin: 30px 0;
+        }
+        
+        .spot-card {
+            background: rgba(20,30,18,0.8);
+            backdrop-filter: blur(12px);
+            border-radius: 36px;
+            overflow: hidden;
+            transition: 0.3s;
+            border: 1px solid #4a8f4a;
+            cursor: pointer;
+        }
+        
+        .spot-card:hover {
+            transform: translateY(-8px);
+            border-color: #6feb9e;
+        }
+        
+        .spot-img {
+            height: 190px;
+            background-size: cover;
+        }
+        
+        .spot-info {
+            padding: 20px;
+        }
+        
+        /* КРАСИВЫЕ МОДАЛЬНЫЕ ОКНА */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(12px);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-card {
+            background: linear-gradient(135deg, #1e2a1c, #2a3a26);
+            padding: 32px;
+            border-radius: 56px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            border: 1px solid rgba(100,200,100,0.3);
+        }
+        
+        body.light .modal-card {
+            background: linear-gradient(135deg, #ffffff, #f0f5ec);
+            color: #1a2c1c;
+            border: 1px solid #2e9e54;
+        }
+        
+        .modal-card h2 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #6feb9e, #ffd89b);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .modal-card p {
+            margin: 12px 0;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        .modal-card i {
+            width: 28px;
+            color: #6feb9e;
+        }
+        
+        .close-modal {
+            background: linear-gradient(95deg, #2e9e54, #1f7840);
+            border: none;
+            padding: 12px 28px;
+            border-radius: 50px;
+            margin-top: 24px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            width: 100%;
+            transition: 0.2s;
+        }
+        
+        .close-modal:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 15px #6feb9e;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #2e9e54;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            z-index: 1000;
+            animation: fadeOut 3s forwards;
+        }
+        
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { opacity: 0; visibility: hidden; }
+        }
+        
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            border-top: 1px solid #3d7240;
+            margin-top: 60px;
+        }
+        
+        @media (max-width: 700px) {
+            .hero h1 { font-size: 38px; }
+        }
+    </style>
+</head>
+<body class="dark">
+<div class="animated-bg">
+    <div class="bg-slide"></div>
+    <div class="bg-slide"></div>
+    <div class="bg-slide"></div>
+    <div class="bg-slide"></div>
+</div>
+<div class="overlay"></div>
+
+<div class="container">
+    <div class="header">
+        <div class="logo">🔥 SPOTSPORT · 200+ ПЛОЩАДОК</div>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+            <button class="theme-toggle" id="themeToggle">🌙</button>
+            <button class="btn-glow" id="geoBtn"><i class="fas fa-location-dot"></i> Моя геолокация</button>
+            <button class="btn-glow" id="openModalBtn">➕ Добавить</button>
+        </div>
+    </div>
+
+    <div class="hero">
+        <h1>Найди идеальное место<br>для спорта</h1>
+        <div class="stats">
+            <div class="stat"><div class="stat-number" id="spotsCount">0</div><div>площадок</div></div>
+            <div class="stat"><div class="stat-number" id="citiesCount">4</div><div>города</div></div>
+        </div>
+    </div>
+
+    <div class="features">
+        <div class="feature-card" data-info="addresses"><i class="fas fa-map-pin" style="font-size:32px"></i><h3>Точные адреса</h3><p>Все площадки с GPS</p></div>
+        <div class="feature-card" data-info="rating"><i class="fas fa-star" style="font-size:32px"></i><h3>Рейтинг спортсменов</h3><p>Честные оценки</p></div>
+        <div class="feature-card" data-info="filters"><i class="fas fa-filter" style="font-size:32px"></i><h3>Умные фильтры</h3><p>Поиск по спорту</p></div>
+    </div>
+
+    <div class="city-list" id="cityContainer">
+        <div class="city-btn active-city" data-city="moscow" data-lat="55.751" data-lng="37.618" data-zoom="11">Москва</div>
+        <div class="city-btn" data-city="spb" data-lat="59.931" data-lng="30.360" data-zoom="11">Санкт-Петербург</div>
+        <div class="city-btn" data-city="kazan" data-lat="55.796" data-lng="49.108" data-zoom="12">Казань</div>
+        <div class="city-btn" data-city="ekb" data-lat="56.838" data-lng="60.605" data-zoom="11">Екатеринбург</div>
+    </div>
+
+    <div class="filter-bar" id="filterBar">
+        <button class="filter-btn active" data-sport="all">🏆 ВСЕ</button>
+        <button class="filter-btn" data-sport="football">⚽ Футбол</button>
+        <button class="filter-btn" data-sport="basketball">🏀 Баскетбол</button>
+        <button class="filter-btn" data-sport="workout">💪 Воркаут</button>
+    </div>
+
+    <div class="map-card">
+        <div id="map"></div>
+    </div>
+
+    <div class="spots-section">
+        <h2 style="margin-bottom: 20px;">⚡ Спортивные локации</h2>
+        <div class="spots-grid" id="spotsGrid"></div>
+    </div>
+
+    <footer>© 2026 SPOTSPORT — 200+ площадок в 4 городах | Кликни на карточку для подробной информации</footer>
+</div>
+
+<!-- Модалка для деталей площадки -->
+<div id="spotDetailModal" class="modal">
+    <div class="modal-card">
+        <h2 id="detailName"></h2>
+        <p><i class="fas fa-location-dot"></i> <strong>📍 Адрес:</strong> <span id="detailAddress"></span></p>
+        <p><i class="fas fa-futbol"></i> <strong>🏆 Вид спорта:</strong> <span id="detailSport"></span></p>
+        <p><i class="fas fa-tag"></i> <strong>🏷️ Удобства:</strong> <span id="detailTags"></span></p>
+        <p><i class="fas fa-star" style="color:gold"></i> <strong>⭐ Рейтинг:</strong> <span id="detailRating"></span></p>
+        <p><i class="fas fa-clock"></i> <strong>🕐 Режим работы:</strong> <span id="detailHours"></span></p>
+        <p><i class="fas fa-phone"></i> <strong>📞 Контакты:</strong> <span id="detailPhone"></span></p>
+        <p><i class="fas fa-info-circle"></i> <strong>ℹ️ Описание:</strong> <span id="detailDesc"></span></p>
+        <button class="close-modal" onclick="closeDetailModal()">Закрыть</button>
+    </div>
+</div>
+
+<!-- Модалка для информационных кнопок -->
+<div id="infoModal" class="modal">
+    <div class="modal-card">
+        <h2 id="infoTitle"></h2>
+        <p id="infoText"></p>
+        <button class="close-modal" onclick="closeInfoModal()">Понятно</button>
+    </div>
+</div>
+
+<!-- Модалка добавления площадки -->
+<div id="addModal" class="modal">
+    <div class="modal-card">
+        <h3>✨ Добавить новую площадку</h3>
+        <input type="text" id="newName" placeholder="Название" style="width:100%; margin:10px 0; padding:12px; border-radius:50px; background:#2a3a26; color:white; border:none;">
+        <input type="text" id="newAddress" placeholder="Адрес" style="width:100%; margin:10px 0; padding:12px; border-radius:50px; background:#2a3a26; color:white; border:none;">
+        <select id="newCity" style="width:100%; margin:10px 0; padding:12px; border-radius:50px; background:#2a3a26; color:white; border:none;">
+            <option value="moscow">Москва</option>
+            <option value="spb">Санкт-Петербург</option>
+            <option value="kazan">Казань</option>
+            <option value="ekb">Екатеринбург</option>
+        </select>
+        <select id="newSport" style="width:100%; margin:10px 0; padding:12px; border-radius:50px; background:#2a3a26; color:white; border:none;">
+            <option value="football">Футбол</option>
+            <option value="basketball">Баскетбол</option>
+            <option value="workout">Воркаут</option>
+        </select>
+        <div style="display:flex; gap:12px; margin-top:16px;">
+            <button id="saveSpotFinal" style="flex:1; background:#2e9e54; border:none; padding:12px; border-radius:50px;">Сохранить</button>
+            <button id="closeAddModal" style="flex:1; background:#333; border:none; border-radius:50px;">Отмена</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // ГЕНЕРАЦИЯ 50+ ПЛОЩАДОК В КАЖДОМ ГОРОДЕ
+    const sportsTypes = ["football", "basketball", "workout"];
+    const sportNames = { football: "Футбол", basketball: "Баскетбол", workout: "Воркаут" };
+    const facilities = {
+        football: ["искусственный газон", "освещение", "раздевалки", "трибуны", "парковка"],
+        basketball: ["кольца", "резиновое покрытие", "бесплатно", "освещение", "скамейки"],
+        workout: ["турники", "брусья", "резиновое покрытие", "бесплатно", "воркаут-зона"]
+    };
+    const metroStations = {
+        moscow: ["Спортивная", "Парк Культуры", "ВДНХ", "Сокольники", "Фили", "Крылатское", "ЦСКА", "Динамо", "Лужники", "Китай-город"],
+        spb: ["Спортивная", "Крестовский", "Приморская", "Петроградская", "Горьковская", "Черная речка", "Старая Деревня"],
+        kazan: ["Кремлевская", "Площадь Тукая", "Суконная слобода", "Аметьево", "Яшьлек"],
+        ekb: ["Динамо", "Площадь 1905 года", "Геологическая", "Чкаловская", "Ботаническая"]
+    };
+    
+    function generateSpots(cityId, count = 55) {
+        const spots = [];
+        const cityCenter = cityData[cityId].center;
+        for(let i = 0; i < count; i++) {
+            const sport = sportsTypes[i % 3];
+            const latOffset = (Math.random() - 0.5) * 0.1;
+            const lngOffset = (Math.random() - 0.5) * 0.1;
+            const metro = metroStations[cityId][i % metroStations[cityId].length];
+            spots.push({
+                id: i + 1,
+                name: `${sportNames[sport]} ${getSportPlaceName(sport)} ${i+1}`,
+                address: `ул. ${getRandomStreet()}, ${Math.floor(Math.random() * 50) + 1} · м. ${metro}`,
+                sport: sport,
+                coords: [cityCenter[0] + latOffset, cityCenter[1] + lngOffset],
+                tags: facilities[sport].slice(0, 3),
+                rating: (4 + Math.random()).toFixed(1),
+                hours: `${Math.floor(Math.random() * 12) + 8}:00-${Math.floor(Math.random() * 4) + 20}:00`,
+                phone: `+7 (${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 90) + 10}-${Math.floor(Math.random() * 90) + 10}`,
+                img: `https://picsum.photos/id/${100 + i}/400/250`,
+                desc: `Отличная ${sportNames[sport].toLowerCase()}ная площадка с ${facilities[sport][0]} и ${facilities[sport][1]}. Рядом станция метро "${metro}". Идеально подходит для любительского и профессионального спорта.`
+            });
+        }
+        return spots;
+    }
+    
+    function getSportPlaceName(sport) {
+        if(sport === "football") return "Арена";
+        if(sport === "basketball") return "Корт";
+        return "Workout Zone";
+    }
+    
+    function getRandomStreet() {
+        const streets = ["Ленинградское шоссе", "Кутузовский пр-т", "Профсоюзная ул.", "Ленинский пр-т", "Мира пр-т", "Невский пр-т", "Московский пр-т", "Большая Садовая", "Кремлевская ул.", "Пушкина ул."];
+        return streets[Math.floor(Math.random() * streets.length)];
+    }
+    
+    const cityData = {
+        moscow: { name: "Москва", center: [55.751, 37.618], spots: [] },
+        spb: { name: "Санкт-Петербург", center: [59.931, 30.360], spots: [] },
+        kazan: { name: "Казань", center: [55.796, 49.108], spots: [] },
+        ekb: { name: "Екатеринбург", center: [56.838, 60.605], spots: [] }
+    };
+    
+    // Генерируем по 50+ площадок в каждом городе
+    cityData.moscow.spots = generateSpots("moscow", 55);
+    cityData.spb.spots = generateSpots("spb", 52);
+    cityData.kazan.spots = generateSpots("kazan", 50);
+    cityData.ekb.spots = generateSpots("ekb", 50);
+    
+    let currentCity = "moscow";
+    let currentFilter = "all";
+    let map, markers = [];
+    
+    function getSpotsForCurrentCity() {
+        let spots = cityData[currentCity].spots;
+        if(currentFilter === "all") return spots;
+        return spots.filter(s => s.sport === currentFilter);
+    }
+    
+    function updateStats() {
+        document.getElementById("spotsCount").innerText = getSpotsForCurrentCity().length;
+    }
+    
+    function renderCards() {
+        const container = document.getElementById("spotsGrid");
+        const spots = getSpotsForCurrentCity();
+        container.innerHTML = spots.map(spot => `
+            <div class="spot-card" onclick="showSpotDetail('${currentCity}', ${spot.id})">
+                <div class="spot-img" style="background-image:url('${spot.img}')"></div>
+                <div class="spot-info">
+                    <strong style="font-size:18px">${spot.name}</strong><br>
+                    📍 ${spot.address}<br>
+                    <div style="display:flex; gap:6px; margin:8px 0">${spot.tags.map(t=>`<span style="background:#2c5a2c; padding:2px 10px; border-radius:20px;">#${t}</span>`).join('')}</div>
+                    <div><i class="fas fa-star" style="color:gold"></i> ${spot.rating} · ${spot.hours}</div>
+                </div>
+            </div>
+        `).join('');
+        updateStats();
+    }
+    
+    function updateMarkers() {
+        if(!map) return;
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+        const spots = getSpotsForCurrentCity();
+        spots.forEach(spot => {
+            let m = L.marker(spot.coords).addTo(map);
+            m.bindPopup(`<b>${spot.name}</b><br>${spot.address}<br>⭐ ${spot.rating}<br>${spot.hours}`);
+            m.on('click', () => showSpotDetail(currentCity, spot.id));
+            markers.push(m);
+        });
+    }
+    
+    function showSpotDetail(cityId, spotId) {
+        const spot = cityData[cityId].spots.find(s => s.id === spotId);
+        if(spot) {
+            document.getElementById("detailName").innerHTML = spot.name;
+            document.getElementById("detailAddress").innerHTML = spot.address;
+            document.getElementById("detailSport").innerHTML = sportNames[spot.sport];
+            document.getElementById("detailTags").innerHTML = spot.tags.join(", ");
+            document.getElementById("detailRating").innerHTML = `${spot.rating} / 5.0 (${Math.floor(Math.random() * 200) + 50} отзывов)`;
+            document.getElementById("detailHours").innerHTML = spot.hours;
+            document.getElementById("detailPhone").innerHTML = spot.phone;
+            document.getElementById("detailDesc").innerHTML = spot.desc;
+            document.getElementById("spotDetailModal").style.display = "flex";
+        }
+    }
+    
+    function closeDetailModal() {
+        document.getElementById("spotDetailModal").style.display = "none";
+    }
+    
+    function showInfoModal(title, text) {
+        document.getElementById("infoTitle").innerHTML = title;
+        document.getElementById("infoText").innerHTML = text;
+        document.getElementById("infoModal").style.display = "flex";
+    }
+    
+    function closeInfoModal() {
+        document.getElementById("infoModal").style.display = "none";
+    }
+    
+    // Кнопки фич с красивым оформлением
+    document.querySelectorAll(".feature-card").forEach(card => {
+        card.onclick = () => {
+            const type = card.dataset.info;
+            if(type === "addresses") showInfoModal("📍 Точные адреса", "<i class='fas fa-check-circle' style='color:#6feb9e'></i> Все 200+ площадок имеют точные GPS-координаты и подробные адреса с указанием станций метро.<br><br><i class='fas fa-map-marked-alt'></i> Вы можете построить маршрут до любой локации прямо из приложения.<br><br><i class='fas fa-city'></i> Мы охватываем 4 города России: Москва, Санкт-Петербург, Казань, Екатеринбург.");
+            if(type === "rating") showInfoModal("⭐ Рейтинг спортсменов", "<i class='fas fa-star' style='color:gold'></i> Реальные оценки от посетителей: состояние покрытия, освещение, наличие раздевалок, чистота.<br><br><i class='fas fa-chart-line'></i> Средний рейтинг наших площадок — 4.6 из 5.<br><br><i class='fas fa-comment'></i> Оставляй свой отзыв после посещения и помогай другим спортсменам!");
+            if(type === "filters") showInfoModal("🎯 Умные фильтры", "<i class='fas fa-filter'></i> Фильтруй площадки по виду спорта: ⚽ Футбол, 🏀 Баскетбол, 💪 Воркаут.<br><br><i class='fas fa-map-marker-alt'></i> Также можно выбрать город и посмотреть только подходящие варианты.<br><br><i class='fas fa-sync-alt'></i> Маркеры на карте обновляются автоматически при изменении фильтров.");
+        };
+    });
+    
+    // Геолокация
+    document.getElementById("geoBtn").onclick = () => {
+        if(navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+                L.marker([pos.coords.latitude, pos.coords.longitude]).addTo(map).bindPopup("📍 Вы здесь").openPopup();
+                let toast = document.createElement("div");
+                toast.className = "toast";
+                toast.innerHTML = "📍 Ваше местоположение определено!";
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            }, () => alert("Не удалось определить местоположение"));
+        } else alert("Геолокация не поддерживается");
+    };
+    
+    // Города
+    document.querySelectorAll(".city-btn").forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll(".city-btn").forEach(c => c.classList.remove("active-city"));
+            btn.classList.add("active-city");
+            currentCity = btn.dataset.city;
+            let lat = parseFloat(btn.dataset.lat);
+            let lng = parseFloat(btn.dataset.lng);
+            let zoom = parseInt(btn.dataset.zoom);
+            map.setView([lat, lng], zoom);
+            renderCards();
+            updateMarkers();
+        };
+    });
+    
+    // Фильтры
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            currentFilter = btn.dataset.sport;
+            renderCards();
+            updateMarkers();
+        };
+    });
+    
+    // Добавление площадки
+    const addModal = document.getElementById("addModal");
+    document.getElementById("openModalBtn").onclick = () => addModal.style.display = "flex";
+    document.getElementById("closeAddModal").onclick = () => addModal.style.display = "none";
+    document.getElementById("saveSpotFinal").onclick = () => {
+        let name = document.getElementById("newName").value.trim();
+        let address = document.getElementById("newAddress").value.trim();
+        let city = document.getElementById("newCity").value;
+        let sport = document.getElementById("newSport").value;
+        if(!name || !address) { alert("Заполни название и адрес"); return; }
+        let newId = Date.now();
+        let newSpot = {
+            id: newId, name, address, sport,
+            coords: cityData[city].center,
+            tags: ["новая", "ждёт проверки"],
+            rating: "новое",
+            hours: "уточняется",
+            phone: "+7 (XXX) XXX-XX-XX",
+            img: "https://picsum.photos/id/42/400/250",
+            desc: "Новая площадка ожидает модерации. Скоро здесь появится полная информация!"
+        };
+        cityData[city].spots.push(newSpot);
+        if(currentCity === city) {
+            renderCards();
+            updateMarkers();
+        }
+        addModal.style.display = "none";
+        let toast = document.createElement("div");
+        toast.className = "toast";
+        toast.innerHTML = `✅ ${name} добавлена в ${cityData[city].name}!`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+        document.getElementById("newName").value = "";
+        document.getElementById("newAddress").value = "";
+    };
+    
+    window.onclick = (e) => {
+        if(e.target === addModal) addModal.style.display = "none";
+        if(e.target === document.getElementById("spotDetailModal")) closeDetailModal();
+        if(e.target === document.getElementById("infoModal")) closeInfoModal();
+    };
+    
+    // ТЕМА
+    document.getElementById("themeToggle").onclick = () => {
+        document.body.classList.toggle("dark");
+        document.body.classList.toggle("light");
+        document.getElementById("themeToggle").innerHTML = document.body.classList.contains("dark") ? "🌙" : "☀️";
+    };
+    
+    function initMap() {
+        map = L.map('map').setView([55.751, 37.618], 12);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: 'OSM' }).addTo(map);
+        updateMarkers();
+    }
+    
+    initMap();
+    renderCards();
+</script>
+</body>
+</html>
